@@ -19,8 +19,6 @@ import ast
 #     return list(set(files_input) - set(files_target))
     
 class EyeMovement:
-    TARGET_DIR = './Preprocess/FreeViewing/Data'
-
     SCREEN_SIZE_W = 596.7  # mm
     PIXEL_PER_MM = SCREEN_SIZE_W / 1920
     SCREEN_SIZE_H = 335.7  # mm
@@ -30,9 +28,8 @@ class EyeMovement:
     SAMPLING_RATE = 60  # Hz
 
 
-    def __init__(self, filename):
-        self.filename = filename
-        self.filepath = os.path.join(EyeMovement.INPUT_DIR, filename)
+    def __init__(self, filepath):
+        self.filepath = filepath
         self.data = self._load_data()
         self.eye_to_use = None
         self.col = None
@@ -167,7 +164,7 @@ class EyeMovement:
 
     def add_state_to_csv(self):
         self.data['eye_state'] = self.states
-        self.data.to_csv(os.path.join(EyeMovement.TARGET_DIR, self.filename) , index=False)
+        self.data.to_csv(self.filepath, index=False)
 
     def run(self):
         self.decide_eye_to_use()
@@ -181,7 +178,7 @@ class EyeMovement:
 
 
 if __name__ == "__main__":
-    psychopy_data_name = './'
-    print(f"Now processing file: {psychopy_data_path}\n")
-    em = EyeMovement(filename)
+    # ds.em_data が同期したdataframe
+    filepath = None
+    em = EyeMovement(filepath=filepath)
     em.run()
