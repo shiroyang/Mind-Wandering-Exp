@@ -4,19 +4,19 @@ from math import tan, pi, sqrt
 import ast
 import re
 from datetime import datetime, timedelta    
-from OOP_sync_img import DataSynchronization, psychopy_to_datetime, str_to_datetime
-from OOP_preprocess_img import EyeMovement
+from OOP_sync_sart import DataSynchronization
+from OOP_preprocess_sart import EyeMovement
 
 if __name__ == "__main__":
-    freeviewing_raw_dir = "./Data_Collection/FreeViewing/Raw"
-    target_file_dir = "./Preprocess/FreeViewing/Data"
+    sart_raw_dir = "./Data_Collection/SART/Raw"
+    target_file_dir = "./Preprocess/SART/Data"
     if not os.path.exists(target_file_dir):
         os.makedirs(target_file_dir)
-    name_list = sorted(list(os.listdir(freeviewing_raw_dir)))
+    name_list = sorted(list(os.listdir(sart_raw_dir)))
     for name in name_list:
         if name.startswith("."): continue
-        psychopy_folder_path = os.path.join(freeviewing_raw_dir, name, "data")
-        em_folder_path = os.path.join(freeviewing_raw_dir, name, "em")
+        psychopy_folder_path = os.path.join(sart_raw_dir, name, "data")
+        em_folder_path = os.path.join(sart_raw_dir, name, "em")
         data_list = [file_name for file_name in os.listdir(psychopy_folder_path) if file_name.endswith(".csv")]
         em_list = [file_name for file_name in os.listdir(em_folder_path) if file_name.endswith(".csv")]
         sorted_data_list = sorted(data_list, key=lambda x: int(re.search(r'(\d+)\.csv$', x).group(1)))
