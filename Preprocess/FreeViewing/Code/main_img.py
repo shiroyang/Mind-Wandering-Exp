@@ -10,8 +10,11 @@ from OOP_preprocess_img import EyeMovement
 if __name__ == "__main__":
     freeviewing_raw_dir = "./Data_Collection/FreeViewing/Raw"
     target_file_dir = "./Preprocess/FreeViewing/Data"
+    if not os.path.exists(target_file_dir):
+        os.makedirs(target_file_dir)
     name_list = list(os.listdir(freeviewing_raw_dir))
     for name in name_list:
+        if name.startswith("."): continue
         psychopy_folder_path = os.path.join(freeviewing_raw_dir, name, "data")
         em_folder_path = os.path.join(freeviewing_raw_dir, name, "em")
         data_list = [file_name for file_name in os.listdir(psychopy_folder_path) if file_name.endswith(".csv")]
@@ -30,6 +33,6 @@ if __name__ == "__main__":
             em = EyeMovement(target_file_path)
             em.run()
             print(f"Finished Synchronizing {psychopy_data_name} and {em_data_name}")
-            print("==============================================================================================")
+            print("==========================================================")
     print("All files have been synchronized!")
-    print("==============================================================================================")
+    print("==========================================================")

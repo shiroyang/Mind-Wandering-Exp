@@ -4,7 +4,9 @@ import re
 from datetime import datetime, timedelta    
 
 psychopy_to_datetime = lambda s: datetime.strptime(s, '%Y-%m-%d_%Hh%M.%S.%f')
-str_to_datetime = lambda s: datetime.strptime(s, '%Y-%m-%d %H:%M:%S.%f')
+def str_to_datetime(s):
+    try: return datetime.strptime(s, '%Y-%m-%d %H:%M:%S.%f')
+    except ValueError: return datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
 
 class DataSynchronization:
     def __init__(self, psychopy_data_path, em_data_path, target_file_path):
