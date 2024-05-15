@@ -11,8 +11,8 @@ import os
 import pandas as pd
 import numpy as np
 from math import tan, pi, sqrt
-import ast
 from functools import cache
+import ast
     
 # def get_matched_files():
 #     files_input = os.listdir(EyeMovement.INPUT_DIR)
@@ -28,11 +28,11 @@ class EyeMovement:
     SAMPLING_RATE = 60  # Hz
     
     # IVT parameters
-    IVT_SACCADE_THRESHOLD = np.deg2rad(20)  # 20 degree per second
+    IVT_SACCADE_THRESHOLD = 30  # 30 degree per second
     IVT_FIXATION_THRESHOLD = 6 # Fixation is at least 100ms
     
     #IDT parameters
-    IDT_DISPERSION_THRESHOLD = np.deg2rad(0.5)  # 0.5 degree in radians
+    IDT_DISPERSION_THRESHOLD = 0.5  # 0.5 degree in radians
     IDT_WINDOW_SIZE = 6  # 100 ms window size
     IDT_FIXATION_THRESHOLD = 6  # Fixation is at least 100ms
     
@@ -59,24 +59,15 @@ class EyeMovement:
         }
         return pd.read_csv(self.filepath, converters=converters)
     
-    def _calc_dis(self, p1, p2):
-        return sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
     
-    # Given two points, calculate the visual angle of two points, return radian
+    # Given two points, calculate the visual angle of two points, return degrees
     def visual_angle_calculation(self, p1, p2):
         # Convert to actual coordinates on monitor
         x1, y1 = p1[0] * EyeMovement.SCREEN_SIZE_W, p1[1] * EyeMovement.SCREEN_SIZE_H
         x2, y2 = p2[0] * EyeMovement.SCREEN_SIZE_W, p2[1] * EyeMovement.SCREEN_SIZE_H
-        p0 = ((x1+x2)/2, (y1+y2)/2)
-        o = (1/2 * self.SCREEN_SIZE_W, 1/2 * self.SCREEN_SIZE_H)
-        o_p0 = self._calc_dis(o, p0)
-        e_o = self.SCREEN_TO_EYE_DIST
-        e_p0 = sqrt(e_o ** 2 + o_p0 ** 2)
-        p0_p1 = self._calc_dis(p0, p1)
-        theta1 = np.arctan(p0_p1 / e_p0)
-        p0_p2 = self._calc_dis(p0, p2)
-        theta2 = np.arctan(p0_p2 / e_p0)
-        theta = abs(theta1) + abs(theta2)
+        d = sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        theta = np.arctan(d / EyeMovement.SCREEN_TO_EYE_DIST)
+        theta = np.rad2deg(theta)
         return theta
         
             
@@ -144,6 +135,7 @@ class EyeMovement:
         """
         Calculate the distance between each consecutive point, 
         if the distance is greater than the threshold, then it is a saccade
+        The rest of the points are fixations, however, if the fixation is less than 6 frames, it should be considered as an error
         identify saccade -> identify fixation -> compute center point -> add error state
         """
         self.IVT = self.blink[:]
@@ -159,7 +151,7 @@ class EyeMovement:
             # Ignore the point where value is missing
             if p1[0] is None or p2[0] is None or p1[1] is None or p2[1] is None: continue
         
-            # Calculate the velocity, pixel/sec
+            # Calculate the velocity, 
             v = self.visual_angle_calculation(p1, p2) * EyeMovement.SAMPLING_RATE # 60 Hz sampling rate
             if v >= EyeMovement.IVT_SACCADE_THRESHOLD:
                 self.IVT[i] = 'Saccade'
@@ -172,9 +164,9 @@ class EyeMovement:
         # add state to the dataframe
         self.data['IVT_state'] = self.IVT
         
-        # compute center point
+        # compute fixation centroid
         fixation_start = None
-        self.data['IVT_fixation_center'] = [(None, None)] * len(self.data)
+        self.data['IVT_fixation_centroid'] = [(None, None)] * len(self.data)
         IVT_states = self.IVT + ['End']
         
         for i, state in enumerate(IVT_states):
@@ -189,13 +181,21 @@ class EyeMovement:
                     y_center = fixation_points.apply(lambda p: p[1]).mean()
                     center_point = (x_center, y_center)
                     for j in range(fixation_start, i):
-                        self.data.at[j, 'IVT_fixation_center'] = center_point
+                        self.data.at[j, 'IVT_fixation_centroid'] = center_point
                 fixation_start = None
         
         # add error state
         for i in range(len(self.data)):
-            if self.IVT[i] == 'Fixation' and self.data.at[i, 'IVT_fixation_center'] == (None, None):
-                self.IVT[i] = 'Error'
+            if self.data.at[i, 'IVT_state'] == 'Fixation' and self.data.at[i, 'IVT_fixation_centroid'] == (None, None):
+                self.data.at[i, 'IVT_state'] = 'Error'
+                
+        # For 3 cosecutive eye states, change [Saccade, Error, Saccade] to [Saccade, Saccade, Saccade]
+        for i in range(len(self.data)-2):
+            first_state = self.data.at[i, 'IVT_state']
+            second_state = self.data.at[i+1, 'IVT_state']
+            third_state = self.data.at[i+2, 'IVT_state']
+            if first_state == 'Saccade' and second_state == 'Error' and third_state == 'Saccade':
+                self.data.at[i+1, 'IVT_state'] = 'Saccade'
                 
         
     def IDT(self):
@@ -205,6 +205,9 @@ class EyeMovement:
         Dispersion = x_max - x_min + y_max - y_min
         identify fixation -> identify saccade -> compute center point -> add error state
         """
+        @cache
+        def _dis_to_rad(d):
+            return np.arctan(d / EyeMovement.SCREEN_TO_EYE_DIST)
         
         self.IDT = self.blink[:]
         col = f'{self.eye_to_use}_gaze_point_on_display_area'
@@ -218,26 +221,28 @@ class EyeMovement:
             x_max = np.max(points.apply(lambda p: p[0]))
             y_min = np.min(points.apply(lambda p: p[1]))
             y_max = np.max(points.apply(lambda p: p[1]))
-            bottom_left = (x_min, y_min)
-            top_right = (x_max, y_max)
-            if self.visual_angle_calculation(bottom_left, top_right) <= EyeMovement.IDT_DISPERSION_THRESHOLD:
-                while r < len(self.data) and self.visual_angle_calculation(bottom_left, top_right) <= EyeMovement.IDT_DISPERSION_THRESHOLD:
+            dispersion = (x_max - x_min) + (y_max - y_min)
+        
+            if _dis_to_rad(dispersion) <= EyeMovement.IDT_DISPERSION_THRESHOLD:
+                while r + 1 < len(self.data) and _dis_to_rad(dispersion) <= EyeMovement.IDT_DISPERSION_THRESHOLD:
                     r += 1
                     new_point = self.data.at[r, col]
+                    if new_point[0] is None or new_point[1] is None: break
                     x_min = min(x_min, new_point[0]); x_max = max(x_max, new_point[0])
                     y_max = max(y_max, new_point[1]); y_min = min(y_min, new_point[1])
-                    bottom_left = (x_min, y_min)
-                    top_right = (x_max, y_max)
+                    dispersion = (x_max - x_min) + (y_max - y_min)
                 
                 for i in range(l, r):
-                    self.IDT[i] = 'Fixation'
+                    # DO NOT overwrite the state if it is already identified as Blink
+                    if not self.IDT[i]:
+                        self.IDT[i] = 'Fixation'
                 
                 l = r
                 r = l + EyeMovement.IDT_WINDOW_SIZE
             
             else:
                 l += 1
-                r = l + EyeMovement.IDT_WINDOW_SIZE
+                r += 1
         
         
         # identify saccade
@@ -248,9 +253,9 @@ class EyeMovement:
         # add state to the dataframe
         self.data['IDT_state'] = self.IDT
         
-        # compute center point
+        # compute fixation centroid
         fixation_start = None
-        self.data['IDT_fixation_center'] = [(None, None)] * len(self.data)
+        self.data['IDT_fixation_centroid'] = [(None, None)] * len(self.data)
         IDT_states = self.IDT + ['End']
         
         for i, state in enumerate(IDT_states):
@@ -265,13 +270,13 @@ class EyeMovement:
                     y_center = fixation_points.apply(lambda p: p[1]).mean()
                     center_point = (x_center, y_center)
                     for j in range(fixation_start, i):
-                        self.data.at[j, 'IDT_fixation_center'] = center_point
+                        self.data.at[j, 'IDT_fixation_centroid'] = center_point
                 fixation_start = None
         
         # add error state
         for i in range(len(self.data)):
-            if self.IDT[i] == 'Fixation' and self.data.at[i, 'IDT_fixation_center'] == (None, None):
-                self.IDT[i] = 'Error'
+            if self.data.at[i, 'IDT_state'] == 'Fixation' and self.data.at[i, 'IDT_fixation_centroid'] == (None, None):
+                self.data.at[i, 'IDT_state'] = 'Error'
 
 
     def add_state_to_csv(self):
@@ -283,7 +288,7 @@ class EyeMovement:
         self.interpolate_coordinates()
         self.identify_blink()
         self.IVT()
-        self.IDT()
+        # self.IDT()
         self.add_state_to_csv()
 
 

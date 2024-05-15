@@ -6,6 +6,7 @@ import re
 from datetime import datetime, timedelta    
 from OOP_sync_img import DataSynchronization, psychopy_to_datetime, str_to_datetime
 from OOP_preprocess_img import EyeMovement
+from tqdm import tqdm
 
 if __name__ == "__main__":
     freeviewing_raw_dir = "./Data_Collection/FreeViewing/Raw"
@@ -13,7 +14,7 @@ if __name__ == "__main__":
     if not os.path.exists(target_file_dir):
         os.makedirs(target_file_dir)
     name_list = sorted(list(os.listdir(freeviewing_raw_dir)))
-    for name in name_list:
+    for name in tqdm(name_list):
         if name.startswith("."): continue
         psychopy_folder_path = os.path.join(freeviewing_raw_dir, name, "data")
         em_folder_path = os.path.join(freeviewing_raw_dir, name, "em")
