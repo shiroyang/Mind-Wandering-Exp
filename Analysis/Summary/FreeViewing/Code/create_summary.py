@@ -1,6 +1,6 @@
 """
 We will create a summary of the free viewing data.
-|Participant|Stimuli|Attention|NumFix|AvgFixDur|NumBlink|AvgBlinkDur|AvgPupDia|VarPupDia|OffStimFram|AvgSacAmp|AvgFixDisp|LastFixDur|LastFixDur-AvgFixDur|
+|Participant|Stimuli|Attention|NumFix|AvgFixDur|NumBlink|AvgBlinkDur|AvgPupDia|VarPupDia|OffStimFram|AvgSacAmp|AvgFixDisp|
 
 Attention: 1 if the participant is looking at the stimuli, 0 otherwise
 NumFix: int
@@ -12,8 +12,6 @@ VarPupDia: float
 OffStimFram: int
 AvgSacAmp: float
 AvgFixDisp: float
-LastFixDur: float
-LastFixDurDiff: float
 """
 
 import os
@@ -56,21 +54,21 @@ class FreeViewingSummary:
         return theta
         
     def transform_coordinate(self, p):
-        return (6/5 * p[0] - 1/10, 9/8 * p[1] - 1/16)
+        return (6/5 * p[0] - 1/10, 6/5 * p[1] - 1/10)
     
     def is_off_stimuli_coordinate(self, p):
         return (p[0] < 0 or p[0] > 1 or p[1] < 0 or p[1] > 1)
         
     def read_data(self):
-        self.data = pd.read_csv(self.input_file_path, low_memory=False)
+        self.df = pd.read_csv(self.input_file_path, low_memory=False)
         self.participant = self.input_file_path.split("/")[-1].split("_")[0]
         self.single_participant_data = defaultdict(list)
 
     def create_summary_for_each_stimuli(self):
-        if len(self.pending_data) < self.window_frames: 
+        if len(self.data) < self.window_frames: 
             if self.stimuli: print(f"Data for {self.stimuli} is not enough")
             return
-        self.pending_data = self.pending_data[-self.window_frames:]
+        self.pending_data = self.data[-self.window_frames:]
         self.pupil_diameter = self.pupil_diameter[-self.window_frames:]
         # We will take the last window_size minutes of the data first and remove the nan values
         self.pupil_diameter = pd.Series(self.pupil_diameter).dropna()
@@ -156,6 +154,7 @@ class FreeViewingSummary:
         self.single_participant_data["Participant"].append(self.participant)
         self.single_participant_data["Stimuli"].append(self.stimuli)
         self.single_participant_data["Attention"].append(self.attention)
+        self.single_participant_data["MW"].append(self.MW)
         self.single_participant_data["NumFix"].append(self.number_of_fixations)
         self.single_participant_data["AvgFixDur"].append(self.average_fixation_duration)
         self.single_participant_data["NumBlink"].append(self.number_of_blinks)
@@ -168,31 +167,28 @@ class FreeViewingSummary:
         self.single_participant_data["LastFixDur"].append(self.last_fixation_duration)
         self.single_participant_data["LastFixDurDiff"].append(self.last_fixation_duration_diff)
         
-        # 240513 New features: SacAmp, VarFix, LastFixDur, LastFixDurDiff
-        # SacAmp: Saccade amplitude
-        
-        
         
     def create_summary(self):
         self.recorded_stimuli = set()
-        self.pending_data = []
+        self.data = []
         self.pupil_diameter = []
         self.stimuli = None
         # Extarct the data for each stimuli
-        for idx, row in self.data.iterrows():
+        for idx, row in self.df.iterrows():
             if pd.isna(row["stimuli"]): continue
             if row["stimuli"] not in self.recorded_stimuli: 
                 self.create_summary_for_each_stimuli()
 
                 # pending_data will record (eye_state, {eye_to_use}_gaze_point_on_display_area, {fixation_classifier}_fixation_centroid) for each stimuli
-                self.pending_data = []
+                self.data = []
                 self.pupil_diameter = []
                 self.recorded_stimuli.add(row["stimuli"])
                 self.stimuli = row["stimuli"]
                 self.attention = 1 if row["state"] == "num_4" else 0
+                self.MW = 1 if self.attention == 0 else 0
                 self.eye_to_use = row["eye_to_use"]
             
-            self.pending_data.append((row[f"{self.fixation_classifier}_state"], row[f"{self.eye_to_use}_gaze_point_on_display_area"], row[f"{self.fixation_classifier}_fixation_centroid"]))
+            self.data.append((row[f"{self.fixation_classifier}_state"], row[f"{self.eye_to_use}_gaze_point_on_display_area"], row[f"{self.fixation_classifier}_fixation_centroid"]))
             self.pupil_diameter.append(row[f"{self.eye_to_use}_pupil_diameter"])
         # Process the last stimuli
         self.create_summary_for_each_stimuli()
@@ -212,7 +208,7 @@ class FreeViewingSummary:
 
 if __name__ == '__main__':
     # window size in seconds
-    for window_size in tqdm(range(5, 46, 5)):
+    for window_size in tqdm(range(5, 41, 5)):
         fixation_classifier = "IVT"
         input_dir = './Preprocess/FreeViewing/Data'
         target_file_dir = './Analysis/Summary/FreeViewing/Data'
