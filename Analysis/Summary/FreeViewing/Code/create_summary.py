@@ -1,5 +1,8 @@
 """
-We will create a summary of the free viewing data.
+We will create a EM features summary of the free viewing data.
+Also, we will calculate the EM features summary after using Gazing Merging Technique used in MultiMatch algorithm.
+The merging threshold is set to 45 degrees, amplitude threshold is set to 100 pixels, and duration threshold is set to 0.3 seconds.
+
 |Participant|Stimuli|Attention|NumFix|AvgFixDur|NumBlink|AvgBlinkDur|AvgPupDia|VarPupDia|OffStimFram|AvgSacAmp|AvgFixDisp|
 
 Attention: 1 if the participant is looking at the stimuli, 0 otherwise
