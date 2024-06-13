@@ -1,22 +1,9 @@
-"""
-This code will add EM features of simplified fixation based on MultiMatch Simplification algorithm.
-
-Before running this code, make sure you have excuted the following code:
-1. Preprocess/FreeViewing/Code/main_img.py (sync the stimuli images and EM data, and perform I-VT fixation detection)
-2. Preprocess/FreeViewing/Code/scanpath_MM.py (trunc 30 seconds of EM data and save it as tsv file for MultiMatch)
-3. Analysis/Summary/FreeViewing/Code/create_summary.py (create summary file for step1)
-4. This code (select 30 seconds summary data and add simplified fixation features)
-
-Add new columns:
-|NumFix_Sim|AvgFixDisp_Sim|AvgFixDur_Sim|
-"""
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import math
 import os
 from collections import defaultdict
-from OOP_MM import retrieve_simplified_fixation
 
 #---------- Parameters of Fixation Simplification----------#
 TAmp = 100.0
@@ -214,58 +201,3 @@ def retrieve_simplified_fixation(filepath):
     
     simplified_fixation = get_simplified_fixation_path(simplified_scanpath)
     return fixation, simplified_fixation
-
-def extract_EM_features(initial_fixation, simplified_fixation, participant, stimuli):
-    global result
-    if initial_fixation is None or simplified_fixation is None:
-        return
-    n = len(simplified_fixation)
-    result[participant][stimuli]["NumFix_Sim"] = n
-    
-    fixation_duration = sum(item[2] for item in initial_fixation)
-    result[participant][stimuli]["AvgFixDur_Sim"] = fixation_duration * 1000 / n
-    
-    mean_x = sum(item[0] for item in simplified_fixation) / n
-    mean_y = sum(item[1] for item in simplified_fixation) / n
-    avg_fix_disp = sum(math.sqrt((item[0] - mean_x) ** 2 + (item[1] - mean_y) ** 2) for item in simplified_fixation) / n
-    result[participant][stimuli]["AvgFixDisp_Sim"] = avg_fix_disp
-    
-    
-def save_result():
-    global result
-    df = pd.read_csv(taget_file)
-    df['NumFix_Sim'] = None
-    df['AvgFixDisp_Sim'] = None
-    df['AvgFixDur_Sim'] = None
-
-    for index, row in df.iterrows():
-        participant = row['Participant']
-        stimuli = row['Stimuli']
-        if participant in result and stimuli in result[participant]:
-            df.at[index, 'NumFix_Sim'] = result[participant][stimuli]['NumFix_Sim']
-            df.at[index, 'AvgFixDisp_Sim'] = result[participant][stimuli]['AvgFixDisp_Sim']
-            df.at[index, 'AvgFixDur_Sim'] = result[participant][stimuli]['AvgFixDur_Sim'] 
-    
-    df.to_csv(taget_file, index=False)
-    
-def main():
-    global result
-    input_dir = './Preprocess/FreeViewing/Scanpath/MultiMatch/'
-    name_list = [name for name in os.listdir(input_dir) if not name.startswith('.')]
-    for name in tqdm(name_list):
-        name_dir = os.path.join(input_dir, name)
-        file_list = [file for file in os.listdir(name_dir) if not file.startswith('.')]
-        for file in file_list:
-            file_path = os.path.join(name_dir, file)
-            participant = name
-            stimuli = file.split('_')[1] + '_' + file.split('_')[2]
-            
-            initial_fixation, simplified_fixation = retrieve_simplified_fixation(file_path)
-            extract_EM_features(initial_fixation, simplified_fixation, participant, stimuli)
-          
-    save_result()
-    
-    
-
-if __name__ == '__main__':
-    main()
