@@ -201,3 +201,18 @@ def retrieve_simplified_fixation(filepath):
     
     simplified_fixation = get_simplified_fixation_path(simplified_scanpath)
     return fixation, simplified_fixation
+
+def extract_EM_features(initial_fixation, simplified_fixation, participant, stimuli, result):
+    if initial_fixation is None or simplified_fixation is None:
+        return
+    n = len(simplified_fixation)
+    result[participant][stimuli]["NumFix_Sim"] = n
+    
+    fixation_duration = sum(item[2] for item in initial_fixation)
+    result[participant][stimuli]["AvgFixDur_Sim"] = fixation_duration * 1000 / n
+    
+    mean_x = sum(item[0] for item in simplified_fixation) / n
+    mean_y = sum(item[1] for item in simplified_fixation) / n
+    avg_fix_disp = sum(math.sqrt((item[0] - mean_x) ** 2 + (item[1] - mean_y) ** 2) for item in simplified_fixation) / n
+    result[participant][stimuli]["AvgFixDisp_Sim"] = avg_fix_disp
+    

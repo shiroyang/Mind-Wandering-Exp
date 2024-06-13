@@ -1,5 +1,6 @@
 # Ignore CSV files
 *.csv
+*.tsv
 *.log
 *.psydat
 *.jpg
