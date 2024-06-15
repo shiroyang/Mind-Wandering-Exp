@@ -1,5 +1,8 @@
 """
-This code will add EM features of simplified fixation based on MultiMatch Simplification algorithm.
+This code will add the following extra features to the summary file:
+1. EM features of simplified fixation based on MultiMatch Simplification algorithm.
+2. RQA features of based on Recurrence Quantification Analysis.
+3. Covered Area of fixations.
 
 Before running this code, make sure you have excuted the following code:
 1. Preprocess/FreeViewing/Code/main_img.py (sync the stimuli images and EM data, and perform I-VT fixation detection)
@@ -17,17 +20,10 @@ import math
 import os
 from collections import defaultdict
 from OOP_MM import retrieve_simplified_fixation, extract_EM_features
-from OOP_RQA import exract_RQA_features
+from OOP_RQA import extract_RQA_features
+from OOP_CoverdArea import CalculateCoverdArea
 
-# Change the parameters in the original code!!! 
-#---------- Parameters of Fixation Simplification----------#
-TAmp = 100.0
-TDir = 45.0
-TDur = 0.3
-#---------- Parameters of RQA ----------#
-linelength = 2
-radius = 64
-mincluster = 8
+# Change the parameters in the original code!!!!!!!!!!!!!
 
 # ---------- Global Variables ---------- #
 taget_file = './Analysis/Summary/FreeViewing/Data/FreeViewing_Summary_30sec.csv'
@@ -72,6 +68,8 @@ def save_result():
             df.at[index, 'lam'] = result[participant][stimuli]['lam']
             df.at[index, 'tt'] = result[participant][stimuli]['tt']
             df.at[index, 'corm'] = result[participant][stimuli]['corm'] 
+            # Covered Area
+            df.at[index, 'CoveredArea'] = result[participant][stimuli]['CoveredArea']
     
     df.to_csv(taget_file, index=False)
     
@@ -90,7 +88,8 @@ def main():
             
             initial_fixation, simplified_fixation = retrieve_simplified_fixation(file_path)
             extract_EM_features(initial_fixation, simplified_fixation, participant, stimuli, result)
-            exract_RQA_features(file_path, participant, stimuli, result)
+            extract_RQA_features(file_path, participant, stimuli, result)
+            CalculateCoverdArea(file_path, participant, stimuli, result)
 
     save_result()
     

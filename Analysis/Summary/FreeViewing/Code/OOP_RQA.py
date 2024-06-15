@@ -17,7 +17,8 @@ from skimage.measure import label, regionprops
 
 # ------------Parameters of RQA------------
 linelength = 2
-radius = 64
+# radius = 64
+radius = 73
 mincluster = 8
 
 result = defaultdict((lambda: defaultdict(dict)))
@@ -221,7 +222,7 @@ def compute_duration_list(a,minline):
 # -----------------RqaDur.py ends here--------------------
 
 
-def exract_RQA_features(filepath, participant, stimuli, result):
+def extract_RQA_features(filepath, participant, stimuli, result):
 
     # Example 1:
     # The input consists of a n x 3 matrix of fixations in (x,y) coordinates.
@@ -262,7 +263,7 @@ if __name__ == "__main__":
             file_path = os.path.join(name_dir, file)
             participant = name
             stimuli = file.split('_')[1] + '_' + file.split('_')[2]
-            exract_RQA_features(file_path, participant, stimuli)
+            extract_RQA_features(file_path, participant, stimuli, result)
             break
         break
     
