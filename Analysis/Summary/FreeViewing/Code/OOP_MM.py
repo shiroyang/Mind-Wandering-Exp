@@ -68,6 +68,10 @@ def simlen(path, TAmp, TDur):
     if len(saccades["x"]) < 1:
         return path
 
+    # Fixed the bug of the original code
+    if len(saccades["x"]) < 2:
+        return path
+
     i = 0
     j = 0
     sim = _get_empty_path()
@@ -206,6 +210,8 @@ def extract_EM_features(initial_fixation, simplified_fixation, participant, stim
     if initial_fixation is None or simplified_fixation is None:
         return
     n = len(simplified_fixation)
+    if n == 0:
+        return
     result[participant][stimuli]["NumFix_Sim"] = n
     
     fixation_duration = sum(item[2] for item in initial_fixation)

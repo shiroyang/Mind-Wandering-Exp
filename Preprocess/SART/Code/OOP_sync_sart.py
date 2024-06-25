@@ -13,8 +13,6 @@ class DataSynchronization:
         self.psychopy_data_path = psychopy_data_path
         self.em_data_path = em_data_path
         self.target_dir = "./synced"
-        if not os.path.exists(self.target_dir):
-            os.makedirs(self.target_dir)
         self.target_file_path = target_file_path
         self.psychopy_data = pd.read_csv(self.psychopy_data_path)
         self.em_data = pd.read_csv(self.em_data_path)

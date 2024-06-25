@@ -1,5 +1,5 @@
 """
-We will create a EM features summary of the free viewing data.
+We will create a EM features summary of the SART data.
 Also, we will calculate the EM features summary after using Gazing Merging Technique used in MultiMatch algorithm.
 The merging threshold is set to 45 degrees, amplitude threshold is set to 100 pixels, and duration threshold is set to 0.3 seconds.
 
@@ -25,10 +25,17 @@ from collections import defaultdict
 from tqdm import tqdm
 
 def extract_number(filename):
-    match = re.search(r'(\d+)', filename)  
-    return int(match.group(0)) if match else float('inf')  
+    # Match both participant number and experiment number
+    match = re.search(r'(\d+)[A-Z]_SART_(\d+)', filename)
+    if match:
+        participant_num = int(match.group(1))
+        exp_num = int(match.group(2))
+        return participant_num, exp_num
+    else:
+        return float('inf'), float('inf')  # Return a large number if no match found
+ 
 
-class FreeViewingSummary:
+class SARTSummary:
     def __init__(self, input_file_path, target_file_path, window_size, fixation_classifier):
         self.input_file_path = input_file_path
         self.target_file_path = target_file_path
@@ -56,15 +63,11 @@ class FreeViewingSummary:
         theta = np.rad2deg(theta)
         return theta
         
-    def transform_coordinate(self, p):
-        return (6/5 * p[0] - 1/10, 6/5 * p[1] - 1/10)
-    
-    def is_off_stimuli_coordinate(self, p):
-        return (p[0] < 0 or p[0] > 1 or p[1] < 0 or p[1] > 1)
         
     def read_data(self):
         self.df = pd.read_csv(self.input_file_path, low_memory=False)
         self.participant = self.input_file_path.split("/")[-1].split("_")[0]
+        self.offset = int(self.input_file_path.split("_")[-1].split(".")[0]) - 1
         self.single_participant_data = defaultdict(list)
 
     def create_summary_for_each_stimuli(self):
@@ -95,8 +98,6 @@ class FreeViewingSummary:
             gaze_point_on_display_area = eval(gaze_point_on_display_area)
             fixation_centroid = eval(fixation_centroid)
             # Assume that during off-stim, we still calculate the number of fixations, etc.
-            if not pd.isna(gaze_point_on_display_area[0]) and not pd.isna(gaze_point_on_display_area[1]) and self.is_off_stimuli_coordinate(self.transform_coordinate(gaze_point_on_display_area)):
-                self.off_stimuli_frames += 1
             
             if eye_state == "Fixation":
                 j = idx
@@ -155,41 +156,63 @@ class FreeViewingSummary:
         self.single_participant_data["NumFix"].append(self.number_of_fixations)
         self.single_participant_data["AvgFixDur"].append(self.average_fixation_duration)
         self.single_participant_data["NumBlink"].append(self.number_of_blinks)
-        # Change this name to ClosedEyeDuration
-        # self.single_participant_data["AvgBlinkDur"].append(self.average_blink_duration)
         self.single_participant_data["ClosedEyeDur"].append(self.average_blink_duration)
         self.single_participant_data["AvgPupDia"].append(self.average_pupil_diameter)
         self.single_participant_data["VarPupDia"].append(self.variance_pupil_diameter)
-        self.single_participant_data["OffStimFram"].append(self.off_stimuli_frames)
         self.single_participant_data["AvgSacAmp"].append(self.saccade_amplitude)
         self.single_participant_data["AvgFixDisp"].append(self.average_fixation_dispersion)
         self.single_participant_data["LastFixDur"].append(self.last_fixation_duration)
         
         
     def create_summary(self):
-        self.recorded_stimuli = set()
+        partcipant_exp_num_recorder = defaultdict(int)
+        # self.recorded_stimuli = set()
         self.data = []
         self.pupil_diameter = []
-        self.stimuli = None
+        # self.stimuli = None
         # Extarct the data for each stimuli
-        for idx, row in self.df.iterrows():
-            if pd.isna(row["stimuli"]): continue
-            if row["stimuli"] not in self.recorded_stimuli: 
-                self.create_summary_for_each_stimuli()
-
-                # pending_data will record (eye_state, {eye_to_use}_gaze_point_on_display_area, {fixation_classifier}_fixation_centroid) for each stimuli
+        n = self.df.shape[0]
+        i = 0
+        while i < n-1:
+            prev = self.df.iloc[i]
+            next = self.df.iloc[i+1]
+            if pd.isna(prev["state"]) and not pd.isna(next["state"]):
+                row = next
+                j = i + 1
+                partcipant_exp_num_recorder[self.participant] += 1
                 self.data = []
                 self.pupil_diameter = []
-                self.recorded_stimuli.add(row["stimuli"])
-                self.stimuli = row["stimuli"]
+                self.stimuli = self.offset * 5 + partcipant_exp_num_recorder[self.participant]
                 self.attention = 1 if row["state"] == "num_4" else 0
                 self.MW = 1 if self.attention == 0 else 0
                 self.eye_to_use = row["eye_to_use"]
+                while j < n and not pd.isna(self.df.iloc[j]["state"]):
+                    self.data.append((self.df.iloc[j][f"{self.fixation_classifier}_state"], self.df.iloc[j][f"{self.eye_to_use}_gaze_point_on_display_area"], self.df.iloc[j][f"{self.fixation_classifier}_fixation_centroid"]))
+                    self.pupil_diameter.append(self.df.iloc[j][f"{self.eye_to_use}_pupil_diameter"])
+                    j += 1
+                self.create_summary_for_each_stimuli()
+                i = j
             
-            self.data.append((row[f"{self.fixation_classifier}_state"], row[f"{self.eye_to_use}_gaze_point_on_display_area"], row[f"{self.fixation_classifier}_fixation_centroid"]))
-            self.pupil_diameter.append(row[f"{self.eye_to_use}_pupil_diameter"])
+            i += 1
+                
+        # for idx, row in self.df.iterrows():
+        #     if pd.isna(row["stimuli"]): continue
+        #     if row["stimuli"] not in self.recorded_stimuli: 
+        #         self.create_summary_for_each_stimuli()
+
+        #         # pending_data will record (eye_state, {eye_to_use}_gaze_point_on_display_area, {fixation_classifier}_fixation_centroid) for each stimuli
+        #         self.data = []
+        #         self.pupil_diameter = []
+        #         # self.recorded_stimuli.add(row["stimuli"])
+        #         self.stimuli = row["stimuli"]
+        #         self.attention = 1 if row["state"] == "num_4" else 0
+        #         self.MW = 1 if self.attention == 0 else 0
+        #         self.eye_to_use = row["eye_to_use"]
+            
+        #     self.data.append((row[f"{self.fixation_classifier}_state"], row[f"{self.eye_to_use}_gaze_point_on_display_area"], row[f"{self.fixation_classifier}_fixation_centroid"]))
+        #     self.pupil_diameter.append(row[f"{self.eye_to_use}_pupil_diameter"])
         # Process the last stimuli
-        self.create_summary_for_each_stimuli()
+        # self.create_summary_for_each_stimuli()
             
 
     def save_data(self):
@@ -206,19 +229,19 @@ class FreeViewingSummary:
 
 if __name__ == '__main__':
     # window size in seconds
-    for window_size in tqdm(range(5, 41, 5)):
+    for window_size in tqdm(range(4, 61, 4)):
         fixation_classifier = "IVT"
-        input_dir = './Preprocess/FreeViewing/Data'
-        target_file_dir = './Analysis/Summary/FreeViewing/Data'
-        target_file_path = os.path.join(target_file_dir, "FreeViewing_Summary_{}sec.csv".format(window_size))
+        input_dir = './Preprocess/SART/Data'
+        target_file_dir = './Analysis/Summary/SART/Data'
+        target_file_path = os.path.join(target_file_dir, "SART_Summary_{}sec.csv".format(window_size))
         if not os.path.exists(target_file_dir):
             os.makedirs(target_file_dir)
         name_list = sorted(list(os.listdir(input_dir)), key=extract_number)
         for name in name_list:
             if name.startswith("."): continue
             input_file_path = os.path.join(input_dir, name)
-            summary = FreeViewingSummary(input_file_path, target_file_path, window_size, fixation_classifier)
+            summary = SARTSummary(input_file_path, target_file_path, window_size, fixation_classifier)
             summary.run()
-            
+    
     print("All Done!")
     print("==========================================================")

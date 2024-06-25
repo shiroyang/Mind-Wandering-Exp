@@ -26,12 +26,12 @@ from OOP_CoverdArea import CalculateCoverdArea
 # Change the parameters in the original code!!!!!!!!!!!!!
 
 # ---------- Global Variables ---------- #
-taget_file = './Analysis/Summary/FreeViewing/Data/FreeViewing_Summary_30sec.csv'
+target_file = './Analysis/Summary/SART/Data/SART_Summary_32sec.csv'
 result = defaultdict((lambda: defaultdict(dict)))
 
 def save_result():
     global result
-    df = pd.read_csv(taget_file)
+    df = pd.read_csv(target_file)
     df['NumFix_Sim'] = None
     df['AvgFixDisp_Sim'] = None
     df['AvgFixDur_Sim'] = None
@@ -47,11 +47,10 @@ def save_result():
     df['lam'] = None
     df['tt'] = None
     df['corm'] = None
-    
 
     for index, row in df.iterrows():
         participant = row['Participant']
-        stimuli = row['Stimuli']
+        stimuli = str(row['Stimuli'])
         if participant in result and stimuli in result[participant]:
             # Simplified Fixation Features
             df.at[index, 'NumFix_Sim'] = result[participant][stimuli].get('NumFix_Sim', np.nan)
@@ -72,12 +71,12 @@ def save_result():
             df.at[index, 'tt'] = result[participant][stimuli]['tt']
             df.at[index, 'corm'] = result[participant][stimuli]['corm'] 
     
-    df.to_csv(taget_file, index=False)
+    df.to_csv(target_file, index=False)
     
     
 def main():
     global result
-    input_dir = './Preprocess/FreeViewing/Scanpath/MultiMatch/'
+    input_dir = './Preprocess/SART/Scanpath/MultiMatch/'
     name_list = [name for name in os.listdir(input_dir) if not name.startswith('.')]
     for name in tqdm(name_list):
         name_dir = os.path.join(input_dir, name)
@@ -85,15 +84,15 @@ def main():
         for file in file_list:
             file_path = os.path.join(name_dir, file)
             participant = name
-            stimuli = file.split('_')[1] + '_' + file.split('_')[2]
+            stimuli = file.split('_')[1]
             
             initial_fixation, simplified_fixation = retrieve_simplified_fixation(file_path)
             extract_EM_features(initial_fixation, simplified_fixation, participant, stimuli, result)
             extract_RQA_features(file_path, participant, stimuli, result)
             CalculateCoverdArea(file_path, participant, stimuli, result)
-
-    save_result()
     
+    save_result()
+
     
 if __name__ == '__main__':
     main()

@@ -1,5 +1,24 @@
+from tqdm import tqdm
 import numpy as np
+import pandas as pd
 import math
+import os
+from collections import defaultdict
+
+#---------- Parameters of Fixation Simplification----------#
+TAmp = 100.0
+TDir = 45.0
+TDur = 0.3
+
+#---------- Parameters of RQA ----------#
+linelength = 2
+radius = 64
+mincluster = 8
+
+
+taget_file = './Analysis/Summary/FreeViewing/Data/FreeViewing_Summary_30sec.csv'
+
+result = defaultdict((lambda: defaultdict(dict)))
 
 def cart2pol(x, y):
     """Transform cartesian into polar coordinates."""
@@ -47,6 +66,10 @@ def simlen(path, TAmp, TDur):
     fixations = path["fix"]
 
     if len(saccades["x"]) < 1:
+        return path
+
+    # Fixed the bug of the original code
+    if len(saccades["x"]) < 2:
         return path
 
     i = 0
@@ -147,6 +170,7 @@ def simplify_scanpath(path, TAmp, TDir, TDur):
 def gen_scanpath_structure(data):
     """Transform a fixation vector into a vector-based scanpath representation."""
     fixations = dict(x=data["start_x"], y=data["start_y"], dur=data["duration"])
+
     lenx = np.diff(data["start_x"])
     leny = np.diff(data["start_y"])
     rho, theta = cart2pol(lenx, leny)
@@ -169,24 +193,32 @@ def get_simplified_fixation_path(simplified_scanpath):
     simplified_fixation_path = list(zip(fix_x, fix_y, fix_dur))
     return simplified_fixation_path
 
-if __name__ == '__main__':
-    TAmp = 100.0
-    TDir = 45.0
-    TDur = 0.3
-    file_path = './Preprocess/FreeViewing/Scanpath/MultiMatch/1Y/1Y_Brazil_1_MW.tsv'
-    fixation = np.recfromcsv(file_path, delimiter='\t', dtype={'names': ('start_x', 'start_y', 'duration'),
+def retrieve_simplified_fixation(filepath):
+    fixation = np.recfromcsv(filepath, delimiter='\t', dtype={'names': ('start_x', 'start_y', 'duration'),
                                                           'formats': ('f8', 'f8', 'f8')})
-    print(fixation)
-    fixation_duration_list = [round(item[2], 2) for item in fixation]
-    # print(fixation_duration_list)
-    # print(sum(fixation_duration_list))
-    # print(len(fixation))
+    
+    if not isinstance(fixation, np.recarray) or fixation.shape == () or fixation.shape == (0,) or len(fixation) < 3:
+        return None, None
+    
     scanpath = gen_scanpath_structure(fixation)
     simplified_scanpath = simplify_scanpath(scanpath, TAmp, TDir, TDur)
     
-    simplified_fixation_path = get_simplified_fixation_path(simplified_scanpath)
-    print(simplified_fixation_path)
+    simplified_fixation = get_simplified_fixation_path(simplified_scanpath)
+    return fixation, simplified_fixation
+
+def extract_EM_features(initial_fixation, simplified_fixation, participant, stimuli, result):
+    if initial_fixation is None or simplified_fixation is None:
+        return
+    n = len(simplified_fixation)
+    if n == 0:
+        return
+    result[participant][stimuli]["NumFix_Sim"] = n
     
-    simplified_scanpath_duration_list = [round(item, 2) for item in simplified_scanpath["fix"]["dur"]]
-    # print(sum(simplified_scanpath["fix"]["dur"]))
-    # print(len(simplified_scanpath["fix"]["dur"]))
+    fixation_duration = sum(item[2] for item in initial_fixation)
+    result[participant][stimuli]["AvgFixDur_Sim"] = fixation_duration * 1000 / n
+    
+    mean_x = sum(item[0] for item in simplified_fixation) / n
+    mean_y = sum(item[1] for item in simplified_fixation) / n
+    avg_fix_disp = sum(math.sqrt((item[0] - mean_x) ** 2 + (item[1] - mean_y) ** 2) for item in simplified_fixation) / n
+    result[participant][stimuli]["AvgFixDisp_Sim"] = avg_fix_disp
+    
