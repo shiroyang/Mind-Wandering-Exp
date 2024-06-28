@@ -57,8 +57,8 @@ def save_result():
             # Covered Area
             df.at[index, 'CoveredArea'] = result[participant][stimuli]['CoveredArea']
             # RQA Features
-            df.at[index, 'nrec'] = result[participant][stimuli]['nrec']
-            df.at[index, 'rec'] = result[participant][stimuli]['rec']
+            # df.at[index, 'nrec'] = result[participant][stimuli]['nrec']
+            # df.at[index, 'rec'] = result[participant][stimuli]['rec']
             df.at[index, 'det'] = result[participant][stimuli]['det']
             df.at[index, 'revdet'] = result[participant][stimuli]['revdet']
             df.at[index, 'meanline'] = result[participant][stimuli]['meanline']
