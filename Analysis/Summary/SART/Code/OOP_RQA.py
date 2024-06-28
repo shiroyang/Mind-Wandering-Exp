@@ -62,8 +62,8 @@ def RqaDur(fixations, dur, param):
     result = {}
     result['n'] = np.nan
     result['recmat'] = np.nan
-    result['nrec'] = np.nan
-    result['rec'] = np.nan
+    # result['nrec'] = np.nan
+    # result['rec'] = np.nan
     result['det'] = np.nan
     result['revdet'] = np.nan
     result['meanline'] = np.nan
@@ -74,13 +74,17 @@ def RqaDur(fixations, dur, param):
     result['tt'] = np.nan
     result['corm'] = np.nan
     result['clusters'] = np.nan
+    
+    result['num_rec'] = np.nan
+    result['weighted_num_rec'] = np.nan
+    result['num_rec_ratio'] = np.nan
 
     n = len(fixations)
     result['n'] = n
 
     if n <= 1:
         return result
-
+    
     # Distance matrix
 
     if not isinstance(fixations[0], list):
@@ -90,6 +94,13 @@ def RqaDur(fixations, dur, param):
 
     # Recurrence matrix
     recurrence_matrix = (distance_matrix <= param['radius']) * 1
+    
+    """
+    Calculate new features: num_rec, weighted_num_rec, num_rec_ratio
+    """
+    num_rec = np.sum(np.triu(recurrence_matrix, 1))
+    result['num_rec'] = num_rec
+    
     dm = np.tile(dur,[n,1])
     duration_matrix = dm + np.transpose(dm)
     recurrence_matrix = recurrence_matrix * duration_matrix
@@ -106,8 +117,8 @@ def RqaDur(fixations, dur, param):
     sum_t = np.sum(dur)
 
     # Global measures
-    result['nrec'] = sum_r
-    result['rec'] = 100.0 * sum_r / ((n - 1) * sum_t)
+    result['weighted_num_rec'] = sum_r
+    result['num_rec_ratio'] = 100.0 * sum_r / ((n - 1) * sum_t)
 
     # Diagonal line measures
     ndiagonals = n - 1
