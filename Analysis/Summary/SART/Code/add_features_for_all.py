@@ -97,24 +97,6 @@ def main():
                 CalculateCoverdArea(file_path, participant, stimuli, result)
         
         save_result()
-        
-        
-    # input_dir = './Preprocess/SART/Scanpath/MultiMatch/'
-    # name_list = [name for name in os.listdir(input_dir) if not name.startswith('.')]
-    # for name in tqdm(name_list):
-    #     name_dir = os.path.join(input_dir, name)
-    #     file_list = [file for file in os.listdir(name_dir) if not file.startswith('.')]
-    #     for file in file_list:
-    #         file_path = os.path.join(name_dir, file)
-    #         participant = name
-    #         stimuli = file.split('_')[1]
-            
-    #         initial_fixation, simplified_fixation = retrieve_simplified_fixation(file_path)
-    #         extract_EM_features(initial_fixation, simplified_fixation, participant, stimuli, result)
-    #         extract_RQA_features(file_path, participant, stimuli, result)
-    #         CalculateCoverdArea(file_path, participant, stimuli, result)
-    
-    #save_result()
 
     
 if __name__ == '__main__':

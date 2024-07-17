@@ -1,5 +1,5 @@
 """
-This code will truncate the scanpath for all window sizes range(5, 41, 5)
+This code will truncate the scanpath for all window sizes range(4, 45, 4)
 target folder: Preprocess/FreeViewing/Scanpath/{window_size}/{subject_id}.csv
 """
 # Truncate the scanpath data to the MultiMatch format
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         os.makedirs("./Preprocess/FreeViewing/Scanpath")
     input_dir = "./Preprocess/FreeViewing/Data"
     
-    for win_size in tqdm(range(5, 41, 5)):
+    for win_size in tqdm(range(4, 45, 4)):
         if not os.path.exists(f"./Preprocess/FreeViewing/Scanpath/{win_size}"):
             os.makedirs(f"./Preprocess/FreeViewing/Scanpath/{win_size}")
         for file_name in os.listdir(input_dir):

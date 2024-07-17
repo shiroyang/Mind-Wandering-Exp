@@ -75,7 +75,7 @@ def save_result():
     
 def main():
     global result, target_file, input_dir
-    for win_size in tqdm(range(5, 41, 5)):
+    for win_size in tqdm(range(4, 45, 4)):
         # Initialize the result
         result = defaultdict((lambda: defaultdict(dict)))
         input_dir = f'./Preprocess/FreeViewing/Scanpath/{win_size}/'

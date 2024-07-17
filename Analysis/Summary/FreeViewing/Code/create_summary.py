@@ -206,7 +206,7 @@ class FreeViewingSummary:
 
 if __name__ == '__main__':
     # window size in seconds
-    for window_size in tqdm(range(5, 41, 5)):
+    for window_size in tqdm(range(4, 45, 4)):
         fixation_classifier = "IVT"
         input_dir = './Preprocess/FreeViewing/Data'
         target_file_dir = './Analysis/Summary/FreeViewing/Data'
